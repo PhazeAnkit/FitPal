@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: plan });
   } catch (error) {
-    console.error("❌ Plan generation failed:", error);
+    console.error(" Plan generation failed:", error);
     return NextResponse.json(
       { success: false, error: (error as Error).message || "Internal Server Error" },
       { status: 500 }
