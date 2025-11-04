@@ -1,58 +1,86 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { Select } from "@/components/ui/select";
 import { Folder, Download, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Select } from "@/components/ui/select";
+import { ConfirmationModal } from "@/components/modal";
 
-const samplePlans = [
-  {
-    id: 1,
-    title: "AI Plan - May 20, 2025",
-    goal: "Muscle Gain",
-    duration: "7 Days",
-    date: "2025-05-20",
-  },
-  {
-    id: 2,
-    title: "AI Plan - Apr 15, 2025",
-    goal: "Weight Loss",
-    duration: "7 Days",
-    date: "2025-04-15",
-  },
-  {
-    id: 3,
-    title: "AI Plan - May 18, 2025",
-    goal: "Toning",
-    duration: "7 Days",
-    date: "2025-05-18",
-  },
-  {
-    id: 4,
-    title: "AI Plan - May 20, 2025",
-    goal: "Muscle Gain",
-    duration: "7 Days",
-    date: "2025-05-20",
-  },
-];
+interface SavedPlan {
+  id: number;
+  title: string;
+  goal: string;
+  duration: string;
+  date: string;
+  data: any;
+}
+
+type ModalAction = {
+  type: "open" | "delete" | "download" | null;
+  plan?: SavedPlan | null;
+};
 
 export default function SavedPlansPage() {
+  const router = useRouter();
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
   const [selectedFilter, setSelectedFilter] = useState("All Plans");
   const [sortOrder, setSortOrder] = useState("Newest");
 
+  const [modal, setModal] = useState<ModalAction>({ type: null, plan: null });
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("savedPlans") || "[]");
+    setSavedPlans(stored);
+  }, []);
+
   const filteredPlans =
     selectedFilter === "All Plans"
-      ? samplePlans
-      : samplePlans.filter((plan) => plan.goal === selectedFilter);
+      ? savedPlans
+      : savedPlans.filter((p) => p.goal === selectedFilter);
 
   const sortedPlans = [...filteredPlans].sort((a, b) =>
     sortOrder === "Newest"
       ? new Date(b.date).getTime() - new Date(a.date).getTime()
       : new Date(a.date).getTime() - new Date(b.date).getTime()
   );
+
+  const openModal = (type: ModalAction["type"], plan?: SavedPlan) =>
+    setModal({ type, plan });
+
+  const closeModal = () => setModal({ type: null, plan: null });
+
+  const handleConfirm = () => {
+    const plan = modal.plan;
+    if (!plan) return;
+
+    switch (modal.type) {
+      case "delete":
+        const updated = savedPlans.filter((p) => p.id !== plan.id);
+        setSavedPlans(updated);
+        localStorage.setItem("savedPlans", JSON.stringify(updated));
+        break;
+
+      case "open":
+        sessionStorage.setItem("aiPlan", JSON.stringify(plan.data));
+        localStorage.setItem("lastGeneratedPlan", JSON.stringify(plan.data));
+        router.push("/dashboard");
+        break;
+
+      case "download":
+        const blob = new Blob([JSON.stringify(plan.data, null, 2)], {
+          type: "application/json",
+        });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${plan.title.replace(/\s+/g, "_")}.json`;
+        link.click();
+        break;
+    }
+
+    closeModal();
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-50 transition-colors">
@@ -69,22 +97,18 @@ export default function SavedPlansPage() {
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex space-x-2">
-            {[
-              "All Plans",
-              "Muscle Gain",
-              "Weight Loss",
-              "Toning",
-              "Endurance",
-            ].map((filter) => (
-              <Button
-                key={filter}
-                variant={selectedFilter === filter ? "primary" : "secondary"}
-                onClick={() => setSelectedFilter(filter)}
-                className="px-4 py-2 text-sm"
-              >
-                {filter}
-              </Button>
-            ))}
+            {["All Plans", "Muscle Gain", "Weight Loss", "Toning", "Endurance"].map(
+              (filter) => (
+                <Button
+                  key={filter}
+                  variant={selectedFilter === filter ? "primary" : "secondary"}
+                  onClick={() => setSelectedFilter(filter)}
+                  className="px-4 py-2 text-sm"
+                >
+                  {filter}
+                </Button>
+              )
+            )}
           </div>
 
           <div className="w-40">
@@ -111,6 +135,9 @@ export default function SavedPlansPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Goal: {plan.goal} • Duration: {plan.duration}
                 </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Saved on {new Date(plan.date).toLocaleDateString()}
+                </p>
               </div>
 
               <div className="flex items-center justify-between mt-6">
@@ -118,7 +145,7 @@ export default function SavedPlansPage() {
                   variant="ghost"
                   size="icon"
                   className="text-gray-500 hover:text-indigo-500"
-                  onClick={() => alert(`Downloading ${plan.title}`)}
+                  onClick={() => openModal("download", plan)}
                 >
                   <Download className="h-5 w-5" />
                 </Button>
@@ -127,7 +154,7 @@ export default function SavedPlansPage() {
                   variant="primary"
                   size="sm"
                   className="px-4"
-                  onClick={() => alert(`Opening ${plan.title}`)}
+                  onClick={() => openModal("open", plan)}
                 >
                   Open Plan
                 </Button>
@@ -136,7 +163,7 @@ export default function SavedPlansPage() {
                   variant="ghost"
                   size="icon"
                   className="text-gray-500 hover:text-red-500"
-                  onClick={() => alert(`Deleting ${plan.title}`)}
+                  onClick={() => openModal("delete", plan)}
                 >
                   <Trash2 className="h-5 w-5" />
                 </Button>
@@ -151,6 +178,40 @@ export default function SavedPlansPage() {
           </div>
         )}
       </main>
+
+      <ConfirmationModal
+        open={!!modal.type}
+        title={
+          modal.type === "delete"
+            ? "Delete Saved Plan?"
+            : modal.type === "open"
+            ? "Open Saved Plan?"
+            : "Download Plan?"
+        }
+        message={
+          modal.type === "delete"
+            ? `Are you sure you want to delete "${modal.plan?.title}"?`
+            : modal.type === "open"
+            ? `This will load "${modal.plan?.title}" into your dashboard.`
+            : `Download "${modal.plan?.title}" as a JSON file.`
+        }
+        confirmLabel={
+          modal.type === "delete"
+            ? "Delete"
+            : modal.type === "open"
+            ? "Open"
+            : "Download"
+        }
+        type={
+          modal.type === "delete"
+            ? "delete"
+            : modal.type === "open"
+            ? "info"
+            : "warning"
+        }
+        onConfirm={handleConfirm}
+        onCancel={closeModal}
+      />
     </div>
   );
 }

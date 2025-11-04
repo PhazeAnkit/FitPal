@@ -129,7 +129,7 @@ export default function DashboardPage() {
               Expand each day to view your meal breakdown.
             </p>
             <p className="text-xs text-gray-500">
-              Daily Target: {planData.diet_plan.daily_targets.calories_kcal} {" "}
+              Daily Target: {planData.diet_plan.daily_targets.calories_kcal}{" "}
               kcal
             </p>
 
