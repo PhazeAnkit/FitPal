@@ -43,7 +43,7 @@ export default function DashboardPage() {
         const userData = JSON.parse(storedUser);
 
 
-        const response = await fetch("/api/plan", {
+        const response = await fetch("/api/generate-plan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(userData),
