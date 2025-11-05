@@ -14,14 +14,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
-
+  type MealData = {
+    breakfast: string;
+    snack_am: string;
+    lunch: string;
+    snack_pm: string;
+    dinner: string;
+  };
 
   useEffect(() => {
     const fetchPlan = async () => {
       try {
         setLoading(true);
         setError(null);
-
 
         const storedUser = sessionStorage.getItem("userData");
         const savedPlan =
@@ -42,7 +47,6 @@ export default function DashboardPage() {
 
         const userData = JSON.parse(storedUser);
 
-
         const response = await fetch("/api/generate-plan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -56,7 +60,6 @@ export default function DashboardPage() {
         const data = await response.json();
         setPlanData(data.data);
 
-
         sessionStorage.setItem("aiPlan", JSON.stringify(data.data));
         localStorage.setItem("lastGeneratedPlan", JSON.stringify(data.data));
       } catch (err: any) {
@@ -69,7 +72,6 @@ export default function DashboardPage() {
 
     fetchPlan();
   }, []);
-
 
   const handleSavePlan = () => {
     if (!planData) return;
@@ -91,7 +93,6 @@ export default function DashboardPage() {
     setTimeout(() => setIsSaved(false), 2000);
   };
 
-
   const handleSpeak = (text: string) => {
     if (!("speechSynthesis" in window)) {
       alert("Your browser does not support speech synthesis.");
@@ -105,7 +106,6 @@ export default function DashboardPage() {
     window.speechSynthesis.speak(utterance);
   };
 
-
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -114,7 +114,6 @@ export default function DashboardPage() {
         </p>
       </div>
     );
-
 
   if (error || !planData)
     return (
@@ -126,11 +125,10 @@ export default function DashboardPage() {
       </div>
     );
 
-
   const workoutDays = Object.entries(planData.exercise_plan || {});
-  const mealDays = Object.entries(planData.diet_plan || {}).filter(([key]) =>
-    key.startsWith("day")
-  );
+  const mealDays: [string, MealData][] = Object.entries(
+    planData.diet_plan || {}
+  ).filter(([key]) => key.startsWith("day")) as [string, MealData][];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-50 flex flex-col">
@@ -139,9 +137,7 @@ export default function DashboardPage() {
           Your Personalized AI Fitness Plan
         </h1>
 
-
         <div className="grid md:grid-cols-2 gap-8">
-
           <Card className="p-6 space-y-4 shadow-lg">
             <div className="flex items-center space-x-2">
               <Dumbbell className="h-6 w-6 text-indigo-500" />
@@ -183,7 +179,6 @@ export default function DashboardPage() {
             </Button>
           </Card>
 
-
           <Card className="p-6 space-y-6 shadow-lg">
             <div className="flex items-center space-x-2">
               <Salad className="h-6 w-6 text-green-500" />
@@ -193,16 +188,13 @@ export default function DashboardPage() {
               Expand each day to view your meal breakdown.
             </p>
             <p className="text-xs text-gray-500">
-              Daily Target: {planData.diet_plan.daily_targets.calories_kcal} kcal
+              Daily Target: {planData.diet_plan.daily_targets.calories_kcal}{" "}
+              kcal
             </p>
 
             <div className="space-y-4">
               {mealDays.map(([day, meals]) => (
-                <MealCard
-                  key={day}
-                  day={day}
-                  meals={meals as Record<string, string>}
-                />
+                <MealCard key={day} day={day} meals={meals} />
               ))}
             </div>
 
@@ -219,7 +211,6 @@ export default function DashboardPage() {
             </Button>
           </Card>
         </div>
-
 
         <Card className="p-6 mt-8 text-center shadow-lg">
           <div className="flex justify-center items-center mb-3">
