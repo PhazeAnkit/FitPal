@@ -4,36 +4,76 @@ import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WorkoutCard } from "@/components/plan-card";
-import { ImageCard } from "@/components/image-crad";
-import { VoiceButton } from "@/components/voice-button";
+import { MealCard } from "@/components/meal-card";
 import { Dumbbell, Salad, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { MealCard } from "@/components/meal-card";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [planData, setPlanData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [speakingProgress, setSpeakingProgress] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
 
+
   useEffect(() => {
-    const saved =
-      sessionStorage.getItem("aiPlan") ||
-      localStorage.getItem("lastGeneratedPlan");
-    if (saved) {
-      setPlanData(JSON.parse(saved));
-      setLoading(false);
-    } else {
-      setError("No plan found. Please generate one from the form.");
-      setLoading(false);
-    }
+    const fetchPlan = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+
+        const storedUser = sessionStorage.getItem("userData");
+        const savedPlan =
+          sessionStorage.getItem("aiPlan") ||
+          localStorage.getItem("lastGeneratedPlan");
+
+        if (savedPlan) {
+          setPlanData(JSON.parse(savedPlan));
+          setLoading(false);
+          return;
+        }
+
+        if (!storedUser) {
+          setError("No user data found. Please complete the form first.");
+          setLoading(false);
+          return;
+        }
+
+        const userData = JSON.parse(storedUser);
+
+
+        const response = await fetch("/api/plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(userData),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch plan");
+        }
+
+        const data = await response.json();
+        setPlanData(data.data);
+
+
+        sessionStorage.setItem("aiPlan", JSON.stringify(data.data));
+        localStorage.setItem("lastGeneratedPlan", JSON.stringify(data.data));
+      } catch (err: any) {
+        console.error("❌ Failed to fetch plan:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlan();
   }, []);
+
 
   const handleSavePlan = () => {
     if (!planData) return;
+
     const savedPlans = JSON.parse(localStorage.getItem("savedPlans") || "[]");
     const newPlan = {
       id: Date.now(),
@@ -48,30 +88,33 @@ export default function DashboardPage() {
       JSON.stringify([...savedPlans, newPlan])
     );
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2500);
+    setTimeout(() => setIsSaved(false), 2000);
   };
 
-  const handleSpeak = (section: "all" | "workout" | "diet" | "motivation") => {
-    setIsSpeaking(true);
-    setTimeout(() => {
-      setIsSpeaking(false);
-      setSpeakingProgress(100);
-    }, 3000);
+
+  const handleSpeak = (text: string) => {
+    if (!("speechSynthesis" in window)) {
+      alert("Your browser does not support speech synthesis.");
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.lang = "en-US";
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   };
 
-  const handleStop = () => {
-    setIsSpeaking(false);
-    setSpeakingProgress(0);
-  };
 
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-xl font-medium text-gray-600 dark:text-gray-300">
-          Loading your personalized plan...
+          Generating your personalized plan...
         </p>
       </div>
     );
+
 
   if (error || !planData)
     return (
@@ -83,11 +126,11 @@ export default function DashboardPage() {
       </div>
     );
 
+
   const workoutDays = Object.entries(planData.exercise_plan || {});
-  const mealDays = Object.entries(planData.diet_plan?.day1 || {}) as [
-    string,
-    string
-  ][];
+  const mealDays = Object.entries(planData.diet_plan || {}).filter(([key]) =>
+    key.startsWith("day")
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-50 flex flex-col">
@@ -96,29 +139,50 @@ export default function DashboardPage() {
           Your Personalized AI Fitness Plan
         </h1>
 
+
         <div className="grid md:grid-cols-2 gap-8">
+
           <Card className="p-6 space-y-4 shadow-lg">
             <div className="flex items-center space-x-2">
               <Dumbbell className="h-6 w-6 text-indigo-500" />
               <h2 className="text-xl font-semibold">7-Day Workout Plan</h2>
             </div>
-            {workoutDays.map(([day, data]: any) => (
+
+            {workoutDays.map(([day, data]: [string, any]) => (
               <WorkoutCard
                 key={day}
                 dayData={{
-                  day,
-                  title: data.focus,
-                  exercises: (data.workout || []).map((w: any, i: number) => ({
-                    id: `${day}-${i}`,
+                  day: day.replace("day", "Day "),
+                  focus: data.focus,
+                  warm_up: data.warm_up,
+                  cool_down: data.cool_down,
+                  duration_min: data.duration_min,
+                  workout: data.workout.map((w: any) => ({
                     name: w.name,
-                    reps: `${w.sets} sets x ${w.reps}`,
+                    sets: w.sets,
+                    reps: w.reps,
                   })),
                 }}
-                onExerciseClick={(ex) => console.log("Exercise:", ex.name)}
-                onListen={(text) => console.log("Listening:", text)}
+                onExerciseClick={(ex) =>
+                  console.log("🖼 Generate Image for:", ex.name)
+                }
+                onListen={(text) => handleSpeak(text)}
               />
             ))}
+
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() =>
+                handleSpeak(
+                  `Your weekly workout includes ${workoutDays.length} days, focusing on ${planData.user_profile.fitness_goal}.`
+                )
+              }
+            >
+              Listen to Full Workout Plan
+            </Button>
           </Card>
+
 
           <Card className="p-6 space-y-6 shadow-lg">
             <div className="flex items-center space-x-2">
@@ -129,23 +193,33 @@ export default function DashboardPage() {
               Expand each day to view your meal breakdown.
             </p>
             <p className="text-xs text-gray-500">
-              Daily Target: {planData.diet_plan.daily_targets.calories_kcal}{" "}
-              kcal
+              Daily Target: {planData.diet_plan.daily_targets.calories_kcal} kcal
             </p>
 
             <div className="space-y-4">
-              {Object.entries(planData.diet_plan || {})
-                .filter(([key]) => key.startsWith("day"))
-                .map(([day, meals]) => (
-                  <MealCard key={day} day={day} meals={meals as any} />
-                ))}
+              {mealDays.map(([day, meals]) => (
+                <MealCard
+                  key={day}
+                  day={day}
+                  meals={meals as Record<string, string>}
+                />
+              ))}
             </div>
 
-            <Button variant="secondary" className="w-full">
-              Listen to Diet Plan
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() =>
+                handleSpeak(
+                  `Your AI meal plan provides around ${planData.diet_plan.daily_targets.calories_kcal} calories per day with a ${planData.user_profile.dietary_preference} diet.`
+                )
+              }
+            >
+              Listen to Full Meal Plan
             </Button>
           </Card>
         </div>
+
 
         <Card className="p-6 mt-8 text-center shadow-lg">
           <div className="flex justify-center items-center mb-3">
@@ -159,7 +233,7 @@ export default function DashboardPage() {
 
         <div className="flex flex-wrap justify-center gap-4 pt-8">
           <Button variant="secondary" onClick={handleSavePlan}>
-            {isSaved ? "✅ Plan Saved!" : "Save Plan"}
+            {isSaved ? "Plan Saved!" : "Save Plan"}
           </Button>
           <Button variant="secondary">Download Diet PDF</Button>
           <Button variant="primary" onClick={() => router.push("/form")}>
@@ -170,13 +244,6 @@ export default function DashboardPage() {
           </Button>
         </div>
       </main>
-
-      <VoiceButton
-        onSpeak={handleSpeak}
-        isSpeaking={isSpeaking}
-        onStop={handleStop}
-        speakingProgress={speakingProgress}
-      />
     </div>
   );
 }

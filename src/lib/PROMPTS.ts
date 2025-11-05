@@ -8,17 +8,17 @@ export const PROMPT_VERSION = {
 
 export const PROMPTS = {
   fitnessPlan: (user: {
-  age: number;
-  weight: number;
-  gender: "male" | "female" | "other";
-  height: number;
-  goal: 'Muscle Gain'| 'Weight Loss'| 'Toning'| 'Endurance';
-  level: 'Beginner'| 'Intermediate'| 'Advance' ;
-  location: 'Home'| 'Gym'| 'Outdoor';
-  diet: 'Veg'| 'Vegan'| 'Keto'| 'Non-Veg';
-  medical_condition?: string;
-  notes?: string;
-  stress_level: number;
+    age: number;
+    weight: number;
+    gender: "male" | "female" | "other";
+    height: number;
+    goal: "Muscle Gain" | "Weight Loss" | "Toning" | "Endurance";
+    level: "Beginner" | "Intermediate" | "Advance";
+    location: "Home" | "Gym" | "Outdoor";
+    diet: "Veg" | "Vegan" | "Keto" | "Non-Veg";
+    medical_condition?: string;
+    notes?: string;
+    stress_level: number;
   }) => `
 You are an expert in human anatomy, physiology, exercise science, and nutrition.
 Your task is to design a 7-day personalized exercise and diet plan based on the user’s provided data.
@@ -167,7 +167,7 @@ Summarize and categorize into JSON:
   "carbs_grains": [],
   "fats": [],
   "produce": [],
-  "spices_condiments": []
+  "spices_condiments": [] 
 }
 Output valid JSON only.
 `,
@@ -183,4 +183,28 @@ Focus on their goal: ${user.goal || "fitness improvement"} and level: ${
 Tone: energetic, supportive, confident.
 Avoid text formatting — plain text output only.
 `,
+  exerciseImage: (exerciseData: any) => {
+    const { name, sets, reps, focus, day, duration } = exerciseData;
+    return `
+Create a realistic, instructional, step-by-step image guide showing how to correctly perform the exercise: "${name}".
+
+Context:
+- Focus area: ${focus}
+- Routine: ${sets} sets × ${reps} reps
+- Session: ${day} (${duration} minutes)
+
+Step-by-step details:
+1. Show the **starting position** — highlight correct posture, stance, and equipment setup if needed.
+2. Show the **movement phase** — emphasize motion direction with arrows or slight blur to suggest movement.
+3. Show the **end position** — depict the correct form at the end of the repetition.
+4. (Optional) Include a **common mistake** overlay or note for educational clarity.
+
+Visual Style:
+- Realistic, professional-quality lighting
+- Clear gym or home workout environment
+- Clean, minimal composition with focus on the person and motion
+- Natural human anatomy, workout attire, and neutral facial expression
+- Consistent camera angle and framing across steps
+  `;
+  },
 };
