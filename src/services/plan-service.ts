@@ -22,5 +22,5 @@ export async function generatePlanService(userData: UserData) {
   });
 
 
-  return JSON.parse(result || {});
+  return JSON.parse(result || "");
 }
