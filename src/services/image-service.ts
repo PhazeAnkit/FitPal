@@ -1,6 +1,5 @@
-import { generateImage } from "@/lib/openai";
+import provider from "@/lib/llm-handler";
 import { PROMPTS } from "@/lib/PROMPTS";
-
 
 export async function generateImageService(exerciseData: any) {
   if (!exerciseData || !exerciseData.name) {
@@ -9,7 +8,7 @@ export async function generateImageService(exerciseData: any) {
 
   const prompt = PROMPTS.exerciseImage(exerciseData);
 
-  const imageUrl = await generateImage({
+  const imageUrl = await provider.generateImage({
     prompt,
     size: "1024x1024",
   });
@@ -19,7 +18,7 @@ export async function generateImageService(exerciseData: any) {
   }
 
   return {
-    url: imageUrl,
+    url: imageUrl.image,
     prompt,
     exerciseData,
   };

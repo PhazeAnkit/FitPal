@@ -186,7 +186,7 @@ Avoid text formatting — plain text output only.
   exerciseImage: (exerciseData: any) => {
     const { name, sets, reps, focus, day, duration } = exerciseData;
     return `
-Create a realistic, instructional, step-by-step image guide showing how to correctly perform the exercise: "${name}".
+Create a , instructional, step-by-step image guide showing how to correctly perform the exercise: "${name}".
 
 Context:
 - Focus area: ${focus}
@@ -200,7 +200,7 @@ Step-by-step details:
 4. (Optional) Include a **common mistake** overlay or note for educational clarity.
 
 Visual Style:
-- Realistic, professional-quality lighting
+- professional-quality lighting
 - Clear gym or home workout environment
 - Clean, minimal composition with focus on the person and motion
 - Natural human anatomy, workout attire, and neutral facial expression
