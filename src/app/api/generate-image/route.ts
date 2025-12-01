@@ -1,27 +1,40 @@
 import { NextResponse } from "next/server";
-import { generateImageService } from "@/services/image-service";
+import { generateImage } from "@/lib/geminiHandler";
+import { PROMPTS } from "@/lib/PROMPTS";
 
 export async function POST(req: Request) {
   try {
     const { exerciseData } = await req.json();
 
-    if (!exerciseData) {
+    if (!exerciseData?.name) {
       return NextResponse.json(
-        { success: false, error: "Missing exercise data" },
+        { success: false, error: "Invalid exercise data" },
         { status: 400 }
       );
     }
 
-    const imageResult = await generateImageService(exerciseData);
+    const prompt = PROMPTS.exerciseImage(exerciseData);
+
+    const result = await generateImage({ prompt });
+
+    if (!result?.image || !result.success) {
+      return NextResponse.json(
+        { success: false, error: "No image generated" },
+        { status: 500 }
+      );
+    }
+
+    // ✅ Convert base64 into a browser-usable image URL
+    const dataUrl = `data:image/png;base64,${result.image}`;
 
     return NextResponse.json({
       success: true,
-      ...imageResult, 
+      url: dataUrl, // ✅ This is what your frontend expects and <img/> can display
+      prompt,
     });
-  } catch (error: any) {
-    console.error("Image generation error:", error);
+  } catch (err: any) {
     return NextResponse.json(
-      { success: false, error: error.message || "Image generation failed" },
+      { success: false, error: err.message },
       { status: 500 }
     );
   }
